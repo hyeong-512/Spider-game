@@ -34,7 +34,7 @@ if not hasattr(character, "max_hp"):
     character.hp = 100
 
 # ★ 체력바 생성 (분리된 클래스 사용)
-hpbar = HealthBar(character.max_hp, font=font)
+hpbar = HealthBar(character.max_hp, font=font, smooth_speed=100)  # smooth_speed: 체력 애니메이션 속도
 
 # ----------------- 버튼/상태 -----------------
 game_state = 'start'
@@ -48,6 +48,7 @@ encyclopedia_button_rect.center = (screen_width // 2, int(screen_height * 0.78))
 
 exit_button_rect = pygame.Rect(0, 0, 240, 80)
 exit_button_rect.center = (screen_width // 2 , int(screen_height * 0.91))
+
 
 running = True
 while running:
@@ -74,6 +75,12 @@ while running:
 
         elif game_state == 'play':
             character.handle_event(event)
+            # 예시: 스페이스 누르면 데미지
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    character.hp -= 15
+                    if character.hp < 0:
+                        character.hp = 0
 
         elif game_state == 'Encyclopedia':
             pass
@@ -98,8 +105,9 @@ while running:
     elif game_state == 'play':
         screen.blit(background, (0, 0))
 
-        # ----------------- ★ 체력바 그리기 -----------------
-        hpbar.draw(screen, character.hp, pos=(20,20))
+        # ----------------- ★ 체력바 그리기 (부드럽게 감소) -----------------
+        hpbar.update(dt, character.hp)  # 실제 hp를 기반으로 천천히 줄어듦
+        hpbar.draw(screen, pos=(20,20))
 
         character.update(dt, screen.get_rect())
         character.draw(screen)
