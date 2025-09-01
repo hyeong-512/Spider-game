@@ -23,9 +23,8 @@ class HealthBar:
         pygame.draw.rect(surf, (0,0,0), (x-self.border, y-self.border, w+self.border*2, h+self.border*2))
         pygame.draw.rect(surf, (200,200,200), (x,y,w,h))
         ratio = max(0, min(1, self.display_hp/self.max_hp))
-        color = (255,0,0) if ratio>0.4 else (255,165,0) if ratio>0.2 else (220,50,50)
+        color = (0,255,0) if ratio>0.4 else (255,165,0) if ratio>0.2 else (220,50,50)
         fill_w = int(w * ratio)
         pygame.draw.rect(surf, color, (x,y,fill_w,h))
         txt = self.font.render(f"{int(self.display_hp)}/{self.max_hp}", True, (255,255,255))
         surf.blit(txt, (x+w+10, y-2))
-
