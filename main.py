@@ -1,9 +1,9 @@
 import pygame
 import random
 import math
-from scripts.임시캐릭터루프 import Character
-from scripts.임시체력바루프 import HealthBar
-from scripts.임시몬스터루프 import MonsterManager
+from scripts.character import Character
+from scripts.ui import HealthBar
+from scripts.monster import MonsterManager
 
 pygame.init()
 
@@ -183,4 +183,3 @@ while running:
     pygame.display.update()
 
 pygame.quit()
-
