@@ -75,3 +75,4 @@ class Character:
         self.rect.center = pos
         self._x, self._y = float(self.rect.x), float(self.rect.y)
         self._left = self._right = self._up = self._down = False
+
