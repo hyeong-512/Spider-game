@@ -20,13 +20,13 @@ class HealthBar:
             if self.display_value < self.current_value:
                 self.display_value = self.current_value
 
-    def draw(self, surface, pos=(0,0), size=(200,20), color=(0,255,0), bg_color=(100,100,100)):
+    def draw(self, surface, pos=(0,0), size=(130,13), color=(0,255,0), bg_color=(100,100,100)):
         pygame.draw.rect(surface, bg_color, (*pos, size[0], size[1]))
         width = int(size[0] * (self.display_value / self.max_value))
         pygame.draw.rect(surface, color, (*pos, width, size[1]))
         # 글꼴: 바 오른쪽 끝에 표시
         if self.font:
-            text_surf = self.font.render(f"{int(self.display_value)}/{self.max_value}", True, (255,255,255))
+            text_surf = self.font.render(f"{int(self.display_value)}/{self.max_value}", True, (255,0,0))
             text_rect = text_surf.get_rect(midleft=(pos[0]+size[0]+10, pos[1]+size[1]//2))  # 바 오른쪽 10px 띄움
             surface.blit(text_surf, text_rect)
 
@@ -50,7 +50,7 @@ class cobwebBar:
             if self.display_value < self.current_value:
                 self.display_value = self.current_value
 
-    def draw(self, surface, pos=(0,0), size=(200,20)):
+    def draw(self, surface, pos=(0,0), size=(130,13)):
         # 바 배경
         pygame.draw.rect(surface, (50,50,50), (*pos, size[0], size[1]))
         
@@ -66,29 +66,18 @@ class cobwebBar:
 
 
 class Timer:
-    def __init__(self, duration, font=None, pos=(0,0), radius=50, color=(255,255,255), bg_color=(100,100,100), thickness=5):
-        """
-        duration: 총 시간 (초)
-        font: 글자 폰트
-        pos: 원 중심 위치 (x,y)
-        radius: 원 반지름
-        color: 진행 호 색
-        bg_color: 배경 원 색
-        thickness: 호 두께
-        """
+    def __init__(self, duration, font=None, color=(255,255,255), pos=(0,0), bg_color=(0,0,0), padding=5):
         self.duration = duration
         self.remaining = duration
         self.font = font
-        self.pos = pos
-        self.radius = radius
         self.color = color
+        self.pos = pos
         self.bg_color = bg_color
-        self.thickness = thickness
+        self.padding = padding
         self.running = False
 
     def start(self):
         self.running = True
-        self.remaining = self.duration
 
     def stop(self):
         self.running = False
@@ -104,17 +93,20 @@ class Timer:
                 self.remaining = 0
 
     def draw(self, surface):
-        x, y = self.pos
-        # 배경 원
-        pygame.draw.circle(surface, self.bg_color, self.pos, self.radius)
-        # 진행 호
-        fraction = self.remaining / self.duration
-        start_angle = -math.pi/2
-        end_angle = start_angle + fraction * 2 * math.pi
-        rect = pygame.Rect(x - self.radius, y - self.radius, self.radius*2, self.radius*2)
-        pygame.draw.arc(surface, self.color, rect, start_angle, end_angle, self.thickness)
-        # 중앙 텍스트
-        if self.font:
-            text_surf = self.font.render(f"{int(self.remaining)}s", True, self.color)
-            text_rect = text_surf.get_rect(center=self.pos)
-            surface.blit(text_surf, text_rect)
+        if not self.font:
+            return
+        text = f"{int(self.remaining)}s"
+        text_surf = self.font.render(text, True, self.color)
+
+        # 블럭 크기 계산 (텍스트 + padding)
+        block_width = text_surf.get_width() + self.padding*2
+        block_height = text_surf.get_height() + self.padding*2
+        block_rect = pygame.Rect(0,0,block_width, block_height)
+        block_rect.center = self.pos
+
+        # 블럭 그리기
+        pygame.draw.rect(surface, self.bg_color, block_rect, border_radius=5)
+
+        # 텍스트 그리기
+        text_rect = text_surf.get_rect(center=self.pos)
+        surface.blit(text_surf, text_rect)
