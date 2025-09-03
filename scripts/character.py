@@ -2,9 +2,20 @@ import pygame
 import math
 
 class Character:
-    def __init__(self, image_path, start_pos, speed=300):
-        # 이미지
-        self.image_original = pygame.image.load(image_path).convert_alpha()
+    def __init__(self, image_paths, start_pos, speed=300, anim_interval=0.2, size=(80, 80)):
+        """
+        image_paths: [idle, walk1, walk2]
+        """
+        self.idle_image = pygame.image.load(image_paths[0]).convert_alpha()
+        self.idle_image = pygame.transform.scale(self.idle_image, size)
+
+        self.walk_frames = []
+        for path in image_paths[1:]:
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.scale(img, size)
+            self.walk_frames.append(img)
+
+        self.image_original = self.idle_image
         self.image = self.image_original
         self.rect = self.image.get_rect(topleft=start_pos)
 
@@ -26,6 +37,11 @@ class Character:
         # 거미줄
         self.max_cobweb = 100
         self.cobweb = self.max_cobweb
+
+        # 애니메이션
+        self.anim_interval = anim_interval
+        self.anim_timer = 0.0
+        self.anim_index = 0
 
     # 키 이벤트 처리
     def handle_event(self, event):
@@ -56,13 +72,25 @@ class Character:
         if self.rect.x != before.x: self._x = float(self.rect.x)
         if self.rect.y != before.y: self._y = float(self.rect.y)
 
-        # 이동 방향으로 회전
+        # 이동 방향으로 회전 + 애니메이션
         if vx != 0 or vy != 0:
             rad = math.atan2(vy, vx)
             deg = math.degrees(rad)
             self.angle = deg - 90
-            self.image = pygame.transform.rotate(self.image_original, -self.angle)
-            self.rect = self.image.get_rect(center=self.rect.center)
+
+            # 걷기 애니메이션
+            self.anim_timer += dt
+            if self.anim_timer >= self.anim_interval:
+                self.anim_timer = 0.0
+                self.anim_index = (self.anim_index + 1) % len(self.walk_frames)
+            self.image_original = self.walk_frames[self.anim_index]
+        else:
+            # 멈췄으면 idle 이미지
+            self.image_original = self.idle_image
+
+        # 회전 적용
+        self.image = pygame.transform.rotate(self.image_original, -self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
 
     # 그리기
     def draw(self, surface):
@@ -75,4 +103,3 @@ class Character:
         self.rect.center = pos
         self._x, self._y = float(self.rect.x), float(self.rect.y)
         self._left = self._right = self._up = self._down = False
-
