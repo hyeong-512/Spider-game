@@ -2,7 +2,7 @@ import pygame
 import math
 import random
 
-class Monster:
+class enemy:
     def __init__(self, start_pos, size=(50, 50), speed=150, color=(255, 0, 0), image=None):
         """몬스터 초기화
         image: pygame.Surface 객체, None이면 빨간 블록
@@ -29,7 +29,7 @@ class Monster:
             pygame.draw.rect(surface, self.color, self.rect)
 
 
-class MonsterManager:
+class enemyManager:
     """여러 몬스터 관리 및 랜덤 이미지 스폰"""
     def __init__(self, screen_width, screen_height, max_monsters=5,
                  spawn_interval=2.0, size=(50,50), speed=150, image_paths=None):
@@ -87,7 +87,7 @@ class MonsterManager:
         # 이미지 랜덤 선택
         image = random.choice(self.images) if self.images else None
 
-        return Monster((x, y), size=size, speed=self.speed, image=image)
+        return enemy((x, y), size=size, speed=self.speed, image=image)
 
     def reset(self):
         self.monsters.clear()
