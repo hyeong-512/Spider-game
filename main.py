@@ -28,9 +28,17 @@ image_x, image_y = 50, 700
 
 # ----------------- 캐릭터 / 체력바 -----------------
 character = Character(
-    "C:/Users/user/OneDrive/바탕 화면/python Workspace/game_images/gray spider_player.png",
-    (screen_width//2, screen_height//2)
+    [
+        "C:/Users/user/OneDrive/바탕 화면/python Workspace/game_images/gray spider_player.png",   # 가만히 있는 이미지
+        "C:/Users/user/OneDrive/바탕 화면/python Workspace/game_images/gray spider(left)_player.png",  # 걷기 1
+        "C:/Users/user/OneDrive/바탕 화면/python Workspace/game_images/gray spider(right)_player.png"   # 걷기 2
+    ],
+    (screen_width//2, screen_height//2),
+    speed=300,
+    anim_interval=0.2,
+    size=(80, 80)
 )
+
 if not hasattr(character, "max_cobweb"):
     character.max_cobweb = 100
 if not hasattr(character, "cobweb"):
@@ -355,5 +363,3 @@ while running:
     pygame.display.update()
 
 pygame.quit()
-pygame.quit()
-
