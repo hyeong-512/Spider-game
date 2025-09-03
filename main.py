@@ -9,7 +9,7 @@ pygame.init()
 # ----------------- 화면/글꼴/시계 -----------------
 screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 screen_width, screen_height = screen.get_size()
-pygame.display.set_caption("Spider Game")
+pygame.display.set_caption("생존은 꺼미다")
 
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 40)
@@ -355,3 +355,5 @@ while running:
     pygame.display.update()
 
 pygame.quit()
+pygame.quit()
+
