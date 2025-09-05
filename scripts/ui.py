@@ -110,3 +110,4 @@ class Timer:
         # 텍스트 그리기
         text_rect = text_surf.get_rect(center=self.pos)
         surface.blit(text_surf, text_rect)
+
