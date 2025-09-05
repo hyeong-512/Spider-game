@@ -3,49 +3,80 @@ import math
 import random
 
 class enemy:
-    def __init__(self, start_pos, size=(50, 50), speed=150, color=(255, 0, 0), image=None):
-        """몬스터 초기화
-        image: pygame.Surface 객체, None이면 빨간 블록
-        """
-        self.rect = pygame.Rect(start_pos[0], start_pos[1], size[0], size[1])
+    def __init__(self, start_pos, size=(50, 50), speed=150, image=None, tile_size=64):
+        self.tile_size = tile_size
         self.speed = speed
-        self.color = color
-        self.image = image  # 이미지 Surface 객체
 
-    def update(self, dt, target_pos):
-        dx = target_pos[0] - self.rect.centerx
-        dy = target_pos[1] - self.rect.centery
-        distance = math.hypot(dx, dy)
-        if distance != 0:
-            dx /= distance
-            dy /= distance
-            self.rect.x += dx * self.speed * dt
-            self.rect.y += dy * self.speed * dt
+        self.rect = pygame.Rect(start_pos[0], start_pos[1], size[0], size[1])
+        self.image = image
+        if self.image:
+            self.image = pygame.transform.scale(self.image, size)
+
+        self.pos = pygame.math.Vector2(start_pos[0], start_pos[1])
+        self.target_pos = pygame.math.Vector2(
+            int(self.pos.x // self.tile_size) * self.tile_size,
+            int(self.pos.y // self.tile_size) * self.tile_size,
+        )
+        self.moving = False
+        self.move_dir = pygame.math.Vector2(0, 0)
+
+    def update(self, dt, target_pos, bounds_rect):
+        if not self.moving:
+            dx = target_pos[0] - self.pos.x
+            dy = target_pos[1] - self.pos.y
+
+            move_x, move_y = 0, 0
+
+            # 큰 방향 우선으로 이동 결정
+            if abs(dx) > abs(dy):
+                move_x = 1 if dx > 0 else -1
+                move_y = 0
+            elif abs(dy) > 0:
+                move_y = 1 if dy > 0 else -1
+                move_x = 0
+
+            new_target = self.target_pos + pygame.math.Vector2(move_x * self.tile_size, move_y * self.tile_size)
+
+            temp_rect = self.rect.copy()
+            temp_rect.topleft = new_target
+            if bounds_rect.contains(temp_rect):
+                self.target_pos = new_target
+                self.move_dir = pygame.math.Vector2(move_x, move_y)
+                self.moving = True
+
+        if self.moving:
+            direction = self.target_pos - self.pos
+            distance = direction.length()
+            if distance != 0:
+                direction.normalize_ip()
+                move_dist = self.speed * dt
+                if move_dist >= distance:
+                    self.pos = self.target_pos
+                    self.moving = False
+                else:
+                    self.pos += direction * move_dist
+
+        self.rect.topleft = (round(self.pos.x), round(self.pos.y))
 
     def draw(self, surface):
         if self.image:
             surface.blit(self.image, self.rect)
         else:
-            pygame.draw.rect(surface, self.color, self.rect)
+            pygame.draw.rect(surface, (255, 0, 0), self.rect)
 
-
-class enemyManager:
-    """여러 몬스터 관리 및 랜덤 이미지 스폰"""
+class enemymanager:
     def __init__(self, screen_width, screen_height, max_monsters=5,
-                 spawn_interval=2.0, size=(50,50), speed=150, image_paths=None):
-        """
-        image_paths: 이미지 경로 리스트, 랜덤 선택
-        """
+                 spawn_interval=2.0, size=(50, 50), speed=150, image_paths=None, tile_size=64):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.max_monsters = max_monsters
         self.spawn_interval = spawn_interval
         self.size = size
         self.speed = speed
+        self.tile_size = tile_size
         self.image_paths = image_paths or []
         self.images = []
 
-        # 이미지 로드
         for path in self.image_paths:
             img = pygame.image.load(path).convert_alpha()
             img = pygame.transform.scale(img, size)
@@ -54,23 +85,9 @@ class enemyManager:
         self.monsters = []
         self.spawn_timer = 0.0
 
-    def update(self, dt, player_pos):
-        self.spawn_timer += dt
-        if self.spawn_timer >= self.spawn_interval and len(self.monsters) < self.max_monsters:
-            self.spawn_timer = 0
-            self.monsters.append(self.spawn_monster())
-
-        for m in self.monsters:
-            m.update(dt, player_pos)
-
-    def draw(self, surface):
-        for m in self.monsters:
-            m.draw(surface)
-
     def spawn_monster(self):
         edge = random.choice(["top", "bottom", "left", "right"])
         size = self.size
-
         if edge == "top":
             x = random.randint(0, self.screen_width - size[0])
             y = -size[1]
@@ -80,15 +97,26 @@ class enemyManager:
         elif edge == "left":
             x = -size[0]
             y = random.randint(0, self.screen_height - size[1])
-        else:  # right
+        else:
             x = self.screen_width
             y = random.randint(0, self.screen_height - size[1])
 
-        # 이미지 랜덤 선택
         image = random.choice(self.images) if self.images else None
+        return enemy((x, y), size=size, speed=self.speed, image=image, tile_size=self.tile_size)
 
-        return enemy((x, y), size=size, speed=self.speed, image=image)
+    def update(self, dt, player_pos, bounds_rect):
+        self.spawn_timer += dt
+        if self.spawn_timer >= self.spawn_interval and len(self.monsters) < self.max_monsters:
+            self.spawn_timer = 0
+            self.monsters.append(self.spawn_monster())
+
+        for m in self.monsters:
+            m.update(dt, player_pos, bounds_rect)
+
+    def draw(self, surface):
+        for m in self.monsters:
+            m.draw(surface)
 
     def reset(self):
         self.monsters.clear()
-        self.spawn_timer = 0
+        self.spawn_timer = 0.0
