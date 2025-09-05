@@ -2,10 +2,10 @@ import pygame
 import math
 
 class Character:
-    def __init__(self, image_paths, start_pos, speed=300, anim_interval=0.2, size=(80, 80)):
-        """
-        image_paths: [idle, walk1, walk2]
-        """
+    def __init__(self, image_paths, start_pos, anim_interval=0.1, size=(80, 80), tile_size=64, speed=300):
+        self.tile_size = tile_size
+        self.speed = speed
+
         self.idle_image = pygame.image.load(image_paths[0]).convert_alpha()
         self.idle_image = pygame.transform.scale(self.idle_image, size)
 
@@ -19,87 +19,140 @@ class Character:
         self.image = self.image_original
         self.rect = self.image.get_rect(topleft=start_pos)
 
-        # 위치 (float으로 부드럽게 이동)
-        self._x = float(self.rect.x)
-        self._y = float(self.rect.y)
+        self.pos = pygame.math.Vector2(start_pos[0], start_pos[1])
+        # 위치 타일 좌표로 스냅
+        self.target_pos = pygame.math.Vector2(
+            int(self.pos.x // self.tile_size) * self.tile_size,
+            int(self.pos.y // self.tile_size) * self.tile_size,
+        )
 
-        # 속도 및 이동 키 상태
-        self.speed = speed
-        self._left = self._right = self._up = self._down = False
+        self.key_left = False
+        self.key_right = False
+        self.key_up = False
+        self.key_down = False
 
-        # 회전 각도
-        self.angle = 0
+        self.move_dir = pygame.math.Vector2(0, 0)
+        self.moving = False
 
-        # 체력
-        self.max_hp = 100
-        self.hp = 100
-
-        # 거미줄
-        self.max_cobweb = 100
-        self.cobweb = self.max_cobweb
-
-        # 애니메이션
         self.anim_interval = anim_interval
         self.anim_timer = 0.0
         self.anim_index = 0
 
-    # 키 이벤트 처리
+        self.angle = 0
+
+        self.max_hp = 100
+        self.hp = self.max_hp
+        self.hit_cooldown = 1.0
+        self.hit_timer = 0.0
+
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_LEFT, pygame.K_a): self._left = True
-            elif event.key in (pygame.K_RIGHT, pygame.K_d): self._right = True
-            elif event.key in (pygame.K_UP, pygame.K_w): self._up = True
-            elif event.key in (pygame.K_DOWN, pygame.K_s): self._down = True
+            if event.key in (pygame.K_LEFT, pygame.K_a):
+                self.key_left = True
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                self.key_right = True
+            elif event.key in (pygame.K_UP, pygame.K_w):
+                self.key_up = True
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self.key_down = True
+
         elif event.type == pygame.KEYUP:
-            if event.key in (pygame.K_LEFT, pygame.K_a): self._left = False
-            elif event.key in (pygame.K_RIGHT, pygame.K_d): self._right = False
-            elif event.key in (pygame.K_UP, pygame.K_w): self._up = False
-            elif event.key in (pygame.K_DOWN, pygame.K_s): self._down = False
+            if event.key in (pygame.K_LEFT, pygame.K_a):
+                self.key_left = False
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                self.key_right = False
+            elif event.key in (pygame.K_UP, pygame.K_w):
+                self.key_up = False
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self.key_down = False
 
-    # 위치 업데이트
+        move_x = 0
+        move_y = 0
+        if self.key_left and not self.key_right:
+            move_x = -1
+        elif self.key_right and not self.key_left:
+            move_x = 1
+        if self.key_up and not self.key_down:
+            move_y = -1
+        elif self.key_down and not self.key_up:
+            move_y = 1
+        self.move_dir = pygame.math.Vector2(move_x, move_y)
+
     def update(self, dt, bounds_rect):
-        vx = (-self.speed if self._left else 0) + (self.speed if self._right else 0)
-        vy = (-self.speed if self._up else 0) + (self.speed if self._down else 0)
-        self._x += vx * dt
-        self._y += vy * dt
+        if self.hit_timer > 0:
+            self.hit_timer -= dt
 
-        self.rect.x = int(self._x)
-        self.rect.y = int(self._y)
+        if self.move_dir.x != 0 and self.move_dir.y != 0:
+            self.move_dir.y = 0
 
-        # 화면 밖 이동 방지
-        before = self.rect.copy()
-        self.rect.clamp_ip(bounds_rect)
-        if self.rect.x != before.x: self._x = float(self.rect.x)
-        if self.rect.y != before.y: self._y = float(self.rect.y)
+        if not self.moving and (self.move_dir.x != 0 or self.move_dir.y != 0):
+            new_target = self.target_pos + pygame.math.Vector2(self.move_dir.x * self.tile_size,
+                                                              self.move_dir.y * self.tile_size)
+            temp_rect = self.rect.copy()
+            temp_rect.topleft = new_target
+            if bounds_rect.contains(temp_rect):
+                self.target_pos = new_target
+                self.moving = True
 
-        # 이동 방향으로 회전 + 애니메이션
-        if vx != 0 or vy != 0:
-            rad = math.atan2(vy, vx)
-            deg = math.degrees(rad)
-            self.angle = deg - 90
+        if self.moving:
+            direction = self.target_pos - self.pos
+            distance = direction.length()
+            if distance != 0:
+                direction.normalize_ip()
+                move_dist = self.speed * dt
+                if move_dist >= distance:
+                    self.pos = self.target_pos
+                    self.moving = False
+                else:
+                    self.pos += direction * move_dist
 
-            # 걷기 애니메이션
+        self.rect.topleft = (round(self.pos.x), round(self.pos.y))
+
+        if self.move_dir.length_squared() > 0:
+            rad = math.atan2(self.move_dir.y, self.move_dir.x)
+            self.angle = math.degrees(rad) - 90
+
+        if self.moving:
             self.anim_timer += dt
             if self.anim_timer >= self.anim_interval:
-                self.anim_timer = 0.0
+                self.anim_timer = 0
                 self.anim_index = (self.anim_index + 1) % len(self.walk_frames)
             self.image_original = self.walk_frames[self.anim_index]
         else:
-            # 멈췄으면 idle 이미지
             self.image_original = self.idle_image
+            self.anim_index = 0
+            self.anim_timer = 0
 
-        # 회전 적용
         self.image = pygame.transform.rotate(self.image_original, -self.angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
-    # 그리기
     def draw(self, surface):
         surface.blit(self.image, self.rect)
 
-    # 초기화
     def reset(self, pos):
+        self.pos = pygame.math.Vector2(int(pos[0] // self.tile_size) * self.tile_size,
+                                      int(pos[1] // self.tile_size) * self.tile_size)
+        self.target_pos = self.pos.copy()
+        self.rect.topleft = (round(self.pos.x), round(self.pos.y))
+
+        self.key_left = False
+        self.key_right = False
+        self.key_up = False
+        self.key_down = False
+        self.move_dir = pygame.math.Vector2(0, 0)
+        self.moving = False
+
+        self.anim_index = 0
+        self.anim_timer = 0
+        self.image_original = self.idle_image
+        self.image = self.idle_image
+        self.angle = 0
+
         self.hp = self.max_hp
-        self.cobweb = self.max_cobweb
-        self.rect.center = pos
-        self._x, self._y = float(self.rect.x), float(self.rect.y)
-        self._left = self._right = self._up = self._down = False
+        self.hit_timer = 0.0
+
+    def take_damage(self, amount):
+        if self.hit_timer <= 0:
+            self.hp -= amount
+            self.hit_timer = self.hit_cooldown
+            print(f"Hit! Current HP: {self.hp}")
